@@ -181,8 +181,8 @@ getPart("Left Leg").sprite.mousedown = getPart("Left Leg").sprite.touchstart = f
     mouseDownOnSprite(getPart("Left Leg"), mouseData);
 }
 
-window.addEventListener("mousemove touchmove", function(event) {
-    if (mouseDown) {
+function resizeSprite(event) {
+	if (mouseDown) {
         var currentX = event.clientX;
         var currentY = event.clientY;
         var newWidth = mouseTarget.sprite.width + ((currentX - mouseX) / 10);
@@ -222,4 +222,11 @@ window.addEventListener("mousemove touchmove", function(event) {
             }
         }
     }
+}
+
+window.addEventListener("mousemove", function(event) {
+    resizeSprite(event);
+});
+window.addEventListener("touchmove", function(event) {
+    resizeSprite(event);
 });
