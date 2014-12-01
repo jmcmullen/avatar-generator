@@ -11,11 +11,20 @@ function Part(name, sprite, minWidth, maxWidth, minHeight, maxHeight, initalWidt
 	this.initialWidth = initalWidth;
 	this.anchorX = anchorX;
 	this.anchorY = anchorY;
-	this.inverse = inverse;
 	this.sprite.anchor.x = anchorX;
 	this.sprite.anchor.y = anchorY;
 	parts[parts.length] = this;
 	sprite._interactive = true;
+	this.text = new PIXI.Text(
+		"", 
+		{font:"16px Arial", fill:"black"}
+	);
+	this.text.anchor.x = 0.5;
+	this.text.position.x = sprite.position.x;
+	this.text.position.y = sprite.position.y;
+	this.debug = new PIXI.Graphics();
+	this.debug.beginFill(0x000000);
+	this.debug.drawCircle(sprite.position.x, sprite.position.y, 5);
 }
 
 function getPart(name) {

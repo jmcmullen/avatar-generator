@@ -4,6 +4,7 @@ var mouseTarget = null;
 var mouseX = null;
 var mouseY = null;
 var bodyParts = [];
+var mouseEnlarge = false;
 
 // create an new instance of a pixi stage
 var interactive = true;
@@ -83,6 +84,11 @@ new Part(
     false
 );
 
+// Debug mouse.
+var mouseDebug = new PIXI.Graphics();
+mouseDebug.beginFill(0x000000);
+mouseDebug.drawCircle(10, 10, 5);
+
 // Initial sizes.
 function setInitalSize() {
     for (part in parts) {
@@ -90,10 +96,14 @@ function setInitalSize() {
         parts[part].sprite.height = parts[part].initialHeight;
     }
 	parts.forEach(function(entry) {
-		stage.addChild(entry.sprite);
+		stage.addChildAt(entry.sprite, 0);
+		stage.addChildAt(entry.text, stage.children.length);
+		stage.addChildAt(entry.debug, stage.children.length);
+
         entry.sprite.width = entry.initialWidth;
         entry.sprite.height = entry.initialHeight;
 	});
+	stage.addChild(mouseDebug);
 }
 
 // Set each body part to the right place.
@@ -110,20 +120,22 @@ function scale() {
     getPart("Left Leg").sprite.position.y = window.innerHeight / 2 + getPart("Body").sprite.height / 2;
     getPart("Right Leg").sprite.position.x = window.innerWidth / 2 + getPart("Body").sprite.width / 4;
     getPart("Right Leg").sprite.position.y = window.innerHeight / 2 + getPart("Body").sprite.height / 2;
+	parts.forEach(function(entry) {
+		entry.text.position.x = entry.sprite.position.x;
+		entry.text.position.y = entry.sprite.position.y + 10;
+		entry.debug.position.x = entry.sprite.position.x;
+		entry.debug.position.y = entry.sprite.position.y;
+	});
 }
 
 setInitalSize();
-
-parts.forEach(function(entry) {
-	stage.addChild(entry.sprite);
-});
 
 function animate() {
     scale();
     requestAnimFrame(animate);
 
 	for(part in parts) {
-		//parts[part].sprite.rotation += 0.1;
+		parts[part].text.setText(Math.round(parts[part].sprite.width) + "x" + Math.round(parts[part].sprite.height));
 	}
 	
     // render the stage   
@@ -137,9 +149,13 @@ window.addEventListener('resize', function(event) {
 });
 window.addEventListener('mouseup', function(event) {
     mouseDown = false;
+	mouseTarget.sprite.tint = 0xFFFFFF;
+	mouseTarget = null;
 });
-window.addEventListener('touchstop', function(event) {
+window.addEventListener('touchend', function(event) {
     mouseDown = false;
+	mouseTarget.sprite.tint = 0xFFFFFF;
+	mouseTarget = null;
 });
 
 getPart("Body").sprite.mousemove = function(mouseData) {
@@ -157,8 +173,21 @@ getPart("Body").sprite.mousemove = function(mouseData) {
 function mouseDownOnSprite(bodyPart, mouseData) {
     mouseDown = true;
     mouseTarget = bodyPart;
-    mouseX = mouseData.originalEvent.clientX;
-    mouseY = mouseData.originalEvent.clientY;
+    // Check if there is a touch screen.
+	if(event.touches == null) {
+		// There is no touch screen so use the mouse positions.
+       	var mouseX = Math.round(event.clientX);
+       	var mouseY = Math.round(event.clientY);
+	} else {
+		// There is a touch screen so use it.
+       	var mouseX = Math.round(event.touches[0].pageX);
+       	var mouseY = Math.round(event.touches[0].pageY);
+	}	
+	
+	mouseTarget.sprite.tint = 0xFF0000;
+	mouseDebug.position.x = mouseX;
+	mouseDebug.position.y = mouseY;
+	mouseEnlarge = false;
 }
 
 // Detect mouse down on body parts.
@@ -181,42 +210,76 @@ getPart("Left Leg").sprite.mousedown = getPart("Left Leg").sprite.touchstart = f
     mouseDownOnSprite(getPart("Left Leg"), mouseData);
 }
 
+function lineDistance(x1, x2) {
+  var xs = 0;
+  var ys = 0;
+ 
+  xs = x2 - x1;
+  xs = xs * xs;
+ 
+  return Math.sqrt(xs + ys);
+}
+
 function resizeSprite(event) {
 	if (mouseDown) {
-        var currentX = event.clientX;
-        var currentY = event.clientY;
-        var newWidth = mouseTarget.sprite.width + ((currentX - mouseX) / 10);
-        var newHeight = mouseTarget.sprite.height + ((currentY - mouseY) / 10);
-		if(false) {
-			newWidth = newWidth - (newWidth * 2);
-			newHeight = newHeight - (newHeight * 2);
+		
+		// Check if there is a touch screen.
+		if(event.touches == null) {
+			// There is no touch screen so use the mouse positions.
+        	var cX = Math.round(event.clientX);
+        	var cY = Math.round(event.clientY);
+		} else {
+			// There is a touch screen so use it.
+        	var cX = Math.round(event.touches[0].pageX);
+        	var cY = Math.round(event.touches[0].pageY);
+		}
+		
+		// Current sprite location
+		var iX = lineDistance(mouseTarget.sprite.position.x, cX);
+		var iY = lineDistance(mouseTarget.sprite.position.y, cY);
+		
+		// Current distance from inital click on sprite.
+		var dX = lineDistance(cX, mouseX);
+		var dY = lineDistance(cY, mouseY);
+		
+		console.log("i: " + iX + ":" + iY);
+		console.log("d: " + dX + ":" + dY);
+		
+		// Increase or decrese size by working out if the current mouse location is
+		// further away than the initial click location to the anchor position.
+		iC = Math.sqrt((cX -= mouseTarget.sprite.position.x) * cX + (cY -= mouseTarget.sprite.position.y) * cY);
+		iD = Math.sqrt((dX -= mouseTarget.sprite.position.x) * dX + (dY -= mouseTarget.sprite.position.y) * dY);
+		
+		if(/*iC > iD && mouseEnlarge == false*/true) {
+			// Size is getting smaller.
+			mouseEnlarge = false;
+        	var newWidth = mouseTarget.sprite.width - (dX / 10);
+        	var newHeight = mouseTarget.sprite.height - (dY / 10);
+		} else {
+			// Size is getting bigger.
+			mouseEnlarge = true;
+        	var newWidth = mouseTarget.sprite.width + (dX / 10);
+        	var newHeight = mouseTarget.sprite.height + (dY / 10);
 		}
 
-        if (newWidth < mouseTarget.maxWidth && newWidth > mouseTarget.minWidth) {
+        if (newWidth <= mouseTarget.maxWidth && newWidth >= mouseTarget.minWidth) {
             if (mouseTarget.name.indexOf("Leg") > -1) {
                 getPart("Left Leg").sprite.width = newWidth;
                 getPart("Right Leg").sprite.width = newWidth;
             } else if (mouseTarget.name.indexOf("Arm") > -1) {
                 getPart("Left Arm").sprite.width = newWidth;
                 getPart("Right Arm").sprite.width = newWidth;
-            } else if (mouseTarget.name.indexOf("Head") > -1) {
-                mouseTarget.sprite.width = newWidth;
-                mouseTarget.sprite.height = newWidth;
             } else {
                 mouseTarget.sprite.width = newWidth;
             }
         }
-
-        if (newHeight < mouseTarget.maxHeight && newHeight > mouseTarget.minHeight) {
+        if (newHeight <= mouseTarget.maxHeight && newHeight >= mouseTarget.minHeight) {
             if (mouseTarget.name.indexOf("Leg") > -1) {
                 getPart("Left Leg").sprite.height = newHeight;
                 getPart("Right Leg").sprite.height = newHeight;
             } else if (mouseTarget.name.indexOf("Arm") > -1) {
                 getPart("Left Arm").sprite.height = newHeight;
                 getPart("Right Arm").sprite.height = newHeight;
-            } else if (mouseTarget.name.indexOf("Head") > -1) {
-                mouseTarget.sprite.height = newHeight;
-                mouseTarget.sprite.width = newHeight;
             } else {
                 mouseTarget.sprite.height = newHeight;
             }
